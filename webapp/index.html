@@ -7,353 +7,321 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   * { box-sizing: border-box; }
-
   html, body { height: 100%; }
 
   body {
     margin: 0;
-    padding: 0;
     font-family: 'Courier New', ui-monospace, monospace;
-    color: #a8d8de;
-    background: #030d11;
+    /* приглушённый камень вместо неона */
+    color: #93a5a4;
+    background: #0e1213;
     overflow-x: hidden;
     position: relative;
     min-height: 100vh;
   }
 
-  /* ---------- СЛОИ ПЕЩЕРЫ ---------- */
+  #far { position: fixed; inset: 0; z-index: 0; opacity: 0.9; pointer-events: none; }
 
-  /* дальний фон: силуэты пород */
-  #far {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    opacity: 0.55;
-    pointer-events: none;
-  }
-
-  /* свечение вглубь пещеры — пульсирует */
   #glow {
     position: fixed;
-    left: 50%;
-    top: 8%;
-    width: 130vw;
-    height: 60vh;
+    left: 50%; top: 10%;
+    width: 130vw; height: 55vh;
     transform: translateX(-50%);
+    /* тусклое сине-зелёное, а не яркий циан */
     background: radial-gradient(ellipse at center,
-      rgba(28, 190, 178, 0.30) 0%,
-      rgba(16, 110, 120, 0.16) 35%,
-      transparent 70%);
+      rgba(46, 106, 102, 0.22) 0%,
+      rgba(30, 68, 70, 0.10) 40%,
+      transparent 72%);
     z-index: 0;
     pointer-events: none;
-    animation: breathe 7s ease-in-out infinite;
-    transition: opacity 1.2s ease;
+    animation: breathe 9s ease-in-out infinite;
+    transition: opacity 1.4s ease;
   }
 
   @keyframes breathe {
-    0%, 100% { opacity: 0.75; transform: translateX(-50%) scale(1); }
-    50%      { opacity: 1;    transform: translateX(-50%) scale(1.07); }
+    0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(1); }
+    50%      { opacity: 1;   transform: translateX(-50%) scale(1.05); }
   }
 
-  /* виньетка — темнота по краям */
   #vignette {
-    position: fixed;
-    inset: 0;
-    z-index: 3;
-    pointer-events: none;
-    background: radial-gradient(ellipse 90% 70% at 50% 35%,
-      transparent 30%, rgba(2, 8, 11, 0.75) 100%);
+    position: fixed; inset: 0; z-index: 3; pointer-events: none;
+    background: radial-gradient(ellipse 95% 75% at 50% 38%,
+      transparent 32%, rgba(6, 9, 10, 0.85) 100%);
   }
 
-  /* частицы */
-  #particles {
-    position: fixed;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    overflow: hidden;
-  }
+  #particles { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
 
   .mote {
-    position: absolute;
-    width: 3px;
-    height: 3px;
-    background: #4ff2e4;
-    box-shadow: 0 0 6px #2de0cf, 0 0 12px rgba(45, 224, 207, 0.6);
+    position: absolute; width: 2px; height: 2px;
+    background: #4e9b92;
+    box-shadow: 0 0 4px rgba(78, 155, 146, 0.8);
     animation: drift linear infinite;
   }
 
   @keyframes drift {
     0%   { transform: translateY(0) translateX(0); opacity: 0; }
-    10%  { opacity: 0.9; }
-    90%  { opacity: 0.7; }
+    12%  { opacity: 0.55; }
+    88%  { opacity: 0.4; }
     100% { transform: translateY(-110vh) translateX(var(--dx, 20px)); opacity: 0; }
   }
 
-  /* капли со сталактитов */
   .drop {
-    position: absolute;
-    width: 3px;
-    height: 8px;
-    background: linear-gradient(#4ff2e4, transparent);
+    position: absolute; width: 2px; height: 7px;
+    background: linear-gradient(rgba(110, 190, 180, 0.7), transparent);
     animation: fall linear infinite;
   }
 
   @keyframes fall {
-    0%   { transform: translateY(0); opacity: 0; }
-    5%   { opacity: 1; }
+    0% { transform: translateY(0); opacity: 0; }
+    6% { opacity: 0.8; }
     100% { transform: translateY(70vh); opacity: 0; }
   }
 
-  /* ---------- КОНТЕНТ ---------- */
-
-  #content {
-    position: relative;
-    z-index: 4;
-    padding: 90px 14px 40px;
-  }
+  #content { position: relative; z-index: 4; padding: 84px 14px 40px; }
 
   h1 {
-    font-size: 15px;
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    margin: 0 0 4px;
-    color: #6ffff0;
-    text-shadow: 0 0 14px rgba(79, 242, 228, 0.7), 0 0 30px rgba(45, 224, 207, 0.3);
+    font-size: 14px; letter-spacing: 5px; text-transform: uppercase;
+    margin: 0 0 5px; color: #8fc4bb;
+    text-shadow: 0 0 16px rgba(90, 160, 152, 0.45);
   }
 
-  .sub {
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: #3d6a72;
-    margin-bottom: 22px;
-    text-transform: uppercase;
-  }
+  .sub { font-size: 10px; letter-spacing: 2px; color: #4a5c5c; text-transform: uppercase; }
 
-  /* карточка = блок породы */
+  /* сводка по неделе */
+  #summary {
+    margin: 18px 0 20px;
+    padding: 12px 13px;
+    border: 1px solid #26332f;
+    background: rgba(20, 27, 27, 0.85);
+  }
+  #summary.complete {
+    border-color: #4e9b92;
+    box-shadow: 0 0 20px rgba(78, 155, 146, 0.18), inset 0 0 26px rgba(78, 155, 146, 0.05);
+  }
+  .sum-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .sum-label { color: #566a68; }
+  .sum-val { color: #8fc4bb; font-weight: bold; }
+  #summary.complete .sum-val { color: #b6efe2; text-shadow: 0 0 12px rgba(120, 210, 195, 0.6); }
+  .sum-bar { display: flex; gap: 2px; margin-top: 9px; }
+  .sum-seg { flex: 1; height: 4px; background: #1d2726; }
+  .sum-seg.on { background: #4e9b92; box-shadow: 0 0 6px rgba(78, 155, 146, 0.6); }
+
   .habit {
     position: relative;
-    background:
-      linear-gradient(180deg, rgba(12, 40, 48, 0.92) 0%, rgba(6, 24, 30, 0.92) 100%);
-    border: 1px solid #17454f;
-    border-top-color: #21606d;
+    background: linear-gradient(180deg, rgba(26, 33, 33, 0.94) 0%, rgba(16, 21, 22, 0.94) 100%);
+    border: 1px solid #26332f;
+    border-top-color: #33443f;
     padding: 15px 14px;
-    margin-bottom: 13px;
+    margin-bottom: 12px;
     overflow: hidden;
   }
 
-  /* текстура «пикселей» на породе */
+  /* текстура камня */
   .habit::before {
     content: '';
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     background-image:
-      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
     background-size: 8px 8px;
     pointer-events: none;
   }
 
   .habit.done {
-    border-color: #2de0cf;
-    box-shadow:
-      0 0 22px rgba(45, 224, 207, 0.22),
-      inset 0 0 30px rgba(45, 224, 207, 0.07);
+    border-color: #3d7a72;
+    box-shadow: 0 0 16px rgba(78, 155, 146, 0.14), inset 0 0 26px rgba(78, 155, 146, 0.04);
   }
 
-  /* волна-импульс при отметке */
   .habit.pulse::after {
     content: '';
-    position: absolute;
-    left: 50%; top: 50%;
+    position: absolute; left: 50%; top: 50%;
     width: 10px; height: 10px;
-    border: 2px solid #6ffff0;
+    border: 1px solid rgba(143, 196, 187, 0.7);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    animation: ripple 0.7s ease-out forwards;
+    animation: ripple 0.8s ease-out forwards;
     pointer-events: none;
   }
 
   @keyframes ripple {
-    0%   { width: 10px; height: 10px; opacity: 0.9; }
-    100% { width: 420px; height: 420px; opacity: 0; }
+    0%   { width: 10px; height: 10px; opacity: 0.7; }
+    100% { width: 380px; height: 380px; opacity: 0; }
   }
 
   .habit-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 11px;
-    position: relative;
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 10px; margin-bottom: 10px; position: relative;
   }
 
   .habit-title {
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: #9dc9d1;
+    font-size: 12px; font-weight: bold; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #8a9c9a;
   }
+  .habit.done .habit-title { color: #a8ddd2; }
 
-  .habit.done .habit-title {
-    color: #6ffff0;
-    text-shadow: 0 0 12px rgba(79, 242, 228, 0.6);
-  }
+  .habit-count { font-size: 11px; color: #4a5c5c; white-space: nowrap; }
+  .bonus { color: #7fc0b3; }
 
-  .habit-count {
-    font-size: 11px;
-    color: #3d6a72;
-    white-space: nowrap;
-  }
-
-  /* прогресс = светящиеся жилы в породе */
-  .bar {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 13px;
-    position: relative;
-  }
+  .bar { display: flex; gap: 4px; margin-bottom: 12px; position: relative; }
 
   .cell {
-    flex: 1;
-    height: 16px;
-    background: #0a222a;
-    border: 1px solid #143a44;
-    position: relative;
+    flex: 1; height: 15px;
+    background: #171f1f;
+    border: 1px solid #232f2e;
   }
 
   .cell.filled {
-    background: linear-gradient(180deg, #6ffff0 0%, #2de0cf 100%);
-    border-color: #8ffff5;
-    box-shadow: 0 0 10px rgba(45, 224, 207, 0.8), 0 0 20px rgba(45, 224, 207, 0.35);
-    animation: vein 3s ease-in-out infinite;
+    background: linear-gradient(180deg, #529c92 0%, #3a7169 100%);
+    border-color: #6bb3a7;
+    box-shadow: 0 0 7px rgba(78, 155, 146, 0.45);
   }
 
-  .cell.filled:nth-child(2n) { animation-delay: 0.4s; }
-  .cell.filled:nth-child(3n) { animation-delay: 0.8s; }
-
-  @keyframes vein {
-    0%, 100% { filter: brightness(1); }
-    50%      { filter: brightness(1.25); }
-  }
+  .row { display: flex; gap: 8px; }
 
   button.act {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #2de0cf;
-    background: rgba(45, 224, 207, 0.05);
-    color: #6ffff0;
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 3px;
-    text-transform: uppercase;
+    flex: 1;
+    padding: 11px;
+    border: 1px solid #3d7a72;
+    background: rgba(78, 155, 146, 0.05);
+    color: #8fc4bb;
+    font-family: inherit; font-size: 11px; font-weight: bold;
+    letter-spacing: 2.5px; text-transform: uppercase;
     cursor: pointer;
-    position: relative;
     transition: background 0.15s, box-shadow 0.15s;
   }
-
   button.act:active {
-    background: rgba(45, 224, 207, 0.2);
-    box-shadow: 0 0 26px rgba(45, 224, 207, 0.5);
+    background: rgba(78, 155, 146, 0.16);
+    box-shadow: 0 0 18px rgba(78, 155, 146, 0.3);
+  }
+  button.act.undo { border-color: #2b3a38; color: #5d7370; background: transparent; }
+
+  button.del {
+    flex: 0 0 44px;
+    border: 1px solid #4a3030;
+    background: transparent;
+    color: #8a5a56;
+    font-family: inherit; font-size: 13px;
+    cursor: pointer;
+  }
+  button.del:active { background: rgba(138, 90, 86, 0.15); }
+
+  /* подтверждение удаления */
+  .confirm {
+    border: 1px solid #6b3f3a;
+    background: rgba(50, 26, 24, 0.6);
+    padding: 11px;
+    margin-top: 10px;
+  }
+  .confirm p {
+    margin: 0 0 10px;
+    font-size: 11px; letter-spacing: 1px; color: #c08a84;
+    text-transform: uppercase; line-height: 1.5;
+  }
+  button.danger { border-color: #8a4a44; color: #d99a94; background: rgba(138, 74, 68, 0.12); }
+
+  /* добавление привычки */
+  #add-zone { margin-top: 20px; }
+
+  button.add-open {
+    width: 100%; padding: 12px;
+    border: 1px dashed #33443f; background: transparent;
+    color: #566a68;
+    font-family: inherit; font-size: 11px;
+    letter-spacing: 2.5px; text-transform: uppercase; cursor: pointer;
+  }
+  button.add-open:active { background: rgba(78, 155, 146, 0.06); }
+
+  #add-form {
+    display: none;
+    border: 1px solid #26332f;
+    background: rgba(20, 27, 27, 0.9);
+    padding: 14px;
+  }
+  #add-form.open { display: block; }
+
+  #add-form label {
+    display: block; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: #4a5c5c; margin-bottom: 6px;
   }
 
-  button.act.undo {
-    border-color: #24545e;
-    color: #4d7f89;
-    background: transparent;
+  #add-form input {
+    width: 100%; padding: 10px;
+    background: #131a1a; border: 1px solid #2b3a38;
+    color: #a8ddd2; font-family: inherit; font-size: 13px;
+    margin-bottom: 13px;
+  }
+  #add-form input:focus { outline: none; border-color: #4e9b92; }
+
+  .target-pick { display: flex; gap: 5px; margin-bottom: 14px; }
+  .target-pick button {
+    flex: 1; padding: 9px 0;
+    background: #131a1a; border: 1px solid #2b3a38;
+    color: #5d7370; font-family: inherit; font-size: 13px; cursor: pointer;
+  }
+  .target-pick button.sel {
+    border-color: #4e9b92; color: #a8ddd2;
+    background: rgba(78, 155, 146, 0.12);
   }
 
   #status, #error {
-    text-align: center;
-    padding: 28px 0;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #34606a;
+    text-align: center; padding: 26px 0;
+    font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; color: #3d4e4d;
   }
-
-  #error { color: #d9615c; display: none; }
+  #error { color: #a5645f; display: none; }
 </style>
 </head>
 <body>
 
-<!-- дальние породы + сталактиты -->
 <svg id="far" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice">
   <defs>
     <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0d323c"/>
-      <stop offset="100%" stop-color="#061a21"/>
+      <stop offset="0%" stop-color="#242e2c"/>
+      <stop offset="100%" stop-color="#141b1b"/>
     </linearGradient>
     <linearGradient id="rockFar" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0a2530"/>
-      <stop offset="100%" stop-color="#04141a"/>
+      <stop offset="0%" stop-color="#1a2322"/>
+      <stop offset="100%" stop-color="#0f1516"/>
     </linearGradient>
   </defs>
 
-  <!-- дальние колонны на горизонте -->
   <g fill="url(#rockFar)">
-    <rect x="30" y="330" width="26" height="180"/>
-    <rect x="38" y="300" width="12" height="40"/>
-    <rect x="120" y="350" width="34" height="160"/>
-    <rect x="128" y="320" width="16" height="40"/>
+    <rect x="30" y="330" width="26" height="180"/><rect x="38" y="300" width="12" height="40"/>
+    <rect x="120" y="350" width="34" height="160"/><rect x="128" y="320" width="16" height="40"/>
     <rect x="250" y="340" width="30" height="170"/>
-    <rect x="300" y="360" width="40" height="150"/>
-    <rect x="310" y="330" width="18" height="40"/>
+    <rect x="300" y="360" width="40" height="150"/><rect x="310" y="330" width="18" height="40"/>
   </g>
 
-  <!-- сталактиты сверху (блочные ступени) -->
   <g fill="url(#rock)">
-    <rect x="0" y="0" width="400" height="34"/>
-    <!-- 1 -->
-    <rect x="18" y="34" width="30" height="26"/>
-    <rect x="24" y="60" width="18" height="24"/>
-    <rect x="29" y="84" width="8" height="20"/>
-    <!-- 2 -->
-    <rect x="86" y="34" width="22" height="18"/>
-    <rect x="91" y="52" width="12" height="16"/>
-    <!-- 3 -->
-    <rect x="150" y="34" width="36" height="34"/>
-    <rect x="158" y="68" width="20" height="28"/>
-    <rect x="164" y="96" width="10" height="26"/>
-    <rect x="167" y="122" width="4" height="16"/>
-    <!-- 4 -->
-    <rect x="228" y="34" width="24" height="22"/>
-    <rect x="234" y="56" width="12" height="18"/>
-    <!-- 5 -->
-    <rect x="290" y="34" width="34" height="30"/>
-    <rect x="298" y="64" width="18" height="26"/>
-    <rect x="303" y="90" width="8" height="18"/>
-    <!-- 6 -->
-    <rect x="356" y="34" width="28" height="20"/>
-    <rect x="363" y="54" width="14" height="22"/>
-    <rect x="367" y="76" width="6" height="14"/>
+    <rect x="0" y="0" width="400" height="36"/>
+    <rect x="18" y="36" width="30" height="26"/><rect x="24" y="62" width="18" height="24"/><rect x="29" y="86" width="8" height="20"/>
+    <rect x="86" y="36" width="22" height="18"/><rect x="91" y="54" width="12" height="16"/>
+    <rect x="150" y="36" width="36" height="34"/><rect x="158" y="70" width="20" height="28"/><rect x="164" y="98" width="10" height="26"/><rect x="167" y="124" width="4" height="16"/>
+    <rect x="228" y="36" width="24" height="22"/><rect x="234" y="58" width="12" height="18"/>
+    <rect x="290" y="36" width="34" height="30"/><rect x="298" y="66" width="18" height="26"/><rect x="303" y="92" width="8" height="18"/>
+    <rect x="356" y="36" width="28" height="20"/><rect x="363" y="56" width="14" height="22"/><rect x="367" y="78" width="6" height="14"/>
   </g>
 
-  <!-- светящиеся вкрапления в породе -->
-  <g fill="#2de0cf" opacity="0.75">
-    <rect x="31" y="72" width="4" height="4"/>
-    <rect x="165" y="88" width="4" height="4"/>
-    <rect x="170" y="110" width="3" height="3"/>
-    <rect x="301" y="78" width="4" height="4"/>
-    <rect x="95" y="46" width="3" height="3"/>
-    <rect x="238" y="62" width="3" height="3"/>
+  <!-- вкрапления: реже и тусклее -->
+  <g fill="#4e9b92" opacity="0.5">
+    <rect x="31" y="72" width="3" height="3"/>
+    <rect x="165" y="90" width="3" height="3"/>
+    <rect x="301" y="80" width="3" height="3"/>
   </g>
 
-  <!-- пол пещеры -->
   <g fill="url(#rock)">
     <rect x="0" y="700" width="400" height="100"/>
     <rect x="40" y="676" width="40" height="24"/>
     <rect x="150" y="684" width="60" height="16"/>
     <rect x="280" y="672" width="46" height="28"/>
   </g>
-  <g fill="#2de0cf" opacity="0.6">
-    <rect x="52" y="686" width="5" height="5"/>
-    <rect x="176" y="690" width="4" height="4"/>
-    <rect x="296" y="682" width="5" height="5"/>
-    <rect x="120" y="712" width="4" height="4"/>
-    <rect x="340" y="720" width="4" height="4"/>
+  <g fill="#4e9b92" opacity="0.4">
+    <rect x="52" y="686" width="4" height="4"/>
+    <rect x="176" y="690" width="3" height="3"/>
+    <rect x="296" y="682" width="4" height="4"/>
   </g>
 </svg>
 
@@ -364,9 +332,24 @@
 <div id="content">
   <h1>Привычки</h1>
   <div class="sub">неделя в процессе</div>
+  <div id="summary" style="display:none"></div>
   <div id="status">загрузка…</div>
   <div id="error"></div>
   <div id="habits"></div>
+
+  <div id="add-zone">
+    <button class="add-open" id="add-open">+ добавить привычку</button>
+    <div id="add-form">
+      <label>название</label>
+      <input id="new-title" type="text" placeholder="например, Чтение" maxlength="40">
+      <label>раз в неделю</label>
+      <div class="target-pick" id="target-pick"></div>
+      <div class="row">
+        <button class="act" id="add-save">создать</button>
+        <button class="act undo" id="add-cancel">отмена</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -374,55 +357,79 @@
   tg.ready();
   tg.expand();
 
-  const habitsEl = document.getElementById('habits');
-  const statusEl = document.getElementById('status');
-  const errorEl = document.getElementById('error');
-  const glowEl = document.getElementById('glow');
+  const habitsEl  = document.getElementById('habits');
+  const statusEl  = document.getElementById('status');
+  const errorEl   = document.getElementById('error');
+  const glowEl    = document.getElementById('glow');
+  const summaryEl = document.getElementById('summary');
+
+  let confirmingId = null;   // какая привычка ждёт подтверждения удаления
+  let newTarget = 3;
 
   /* ---------- атмосфера ---------- */
-
-  function spawnParticles() {
+  (function atmosphere() {
     const box = document.getElementById('particles');
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 18; i++) {
       const m = document.createElement('div');
       m.className = 'mote';
       m.style.left = Math.random() * 100 + 'vw';
       m.style.top = (100 + Math.random() * 30) + 'vh';
-      m.style.setProperty('--dx', (Math.random() * 60 - 30) + 'px');
-      m.style.animationDuration = (14 + Math.random() * 16) + 's';
-      m.style.animationDelay = (-Math.random() * 20) + 's';
-      m.style.opacity = 0.3 + Math.random() * 0.6;
+      m.style.setProperty('--dx', (Math.random() * 50 - 25) + 'px');
+      m.style.animationDuration = (18 + Math.random() * 18) + 's';
+      m.style.animationDelay = (-Math.random() * 25) + 's';
       box.appendChild(m);
     }
-    // капли со сталактитов
-    [8, 40, 72].forEach((leftPct, i) => {
+    [10, 44, 76].forEach((x, i) => {
       const d = document.createElement('div');
       d.className = 'drop';
-      d.style.left = leftPct + 'vw';
+      d.style.left = x + 'vw';
       d.style.top = '5vh';
-      d.style.animationDuration = (2.5 + i) + 's';
-      d.style.animationDelay = (i * 1.7) + 's';
+      d.style.animationDuration = (3 + i) + 's';
+      d.style.animationDelay = (i * 2.2) + 's';
       box.appendChild(d);
     });
-  }
-  spawnParticles();
+  })();
 
-  // пещера светлеет по мере выполнения недельной цели
-  function setCaveLight(habits) {
-    if (!habits.length) return;
-    const total = habits.reduce((s, h) => s + h.weekly_target, 0);
-    const done = habits.reduce((s, h) => s + Math.min(h.done, h.weekly_target), 0);
-    const ratio = total ? done / total : 0;
-    glowEl.style.opacity = 0.35 + ratio * 0.9;
+  function setCaveLight(ratio) {
+    glowEl.style.opacity = 0.4 + ratio * 0.85;
   }
 
-  /* ---------- логика ---------- */
+  /* ---------- сводка недели ---------- */
+  function renderSummary(habits) {
+    if (!habits.length) { summaryEl.style.display = 'none'; return; }
+    summaryEl.style.display = 'block';
 
-  function showError(msg) {
-    errorEl.textContent = msg;
-    errorEl.style.display = 'block';
+    const closed = habits.filter(h => h.done >= h.weekly_target).length;
+    const allClosed = closed === habits.length;
+
+    const totalTarget = habits.reduce((s, h) => s + h.weekly_target, 0);
+    const totalDone = habits.reduce((s, h) => s + Math.min(h.done, h.weekly_target), 0);
+    const bonus = habits.reduce((s, h) => s + Math.max(0, h.done - h.weekly_target), 0);
+    const ratio = totalTarget ? totalDone / totalTarget : 0;
+
+    summaryEl.className = allClosed ? 'complete' : '';
+
+    let segs = '<div class="sum-bar">';
+    for (let i = 0; i < habits.length; i++) {
+      segs += `<div class="sum-seg${i < closed ? ' on' : ''}"></div>`;
+    }
+    segs += '</div>';
+
+    summaryEl.innerHTML = `
+      <div class="sum-line">
+        <span class="sum-label">${allClosed ? 'неделя закрыта' : 'закрыто целей'}</span>
+        <span class="sum-val">${closed} / ${habits.length}</span>
+      </div>
+      ${segs}
+      <div class="sum-line" style="margin-top:9px">
+        <span class="sum-label">всего отметок</span>
+        <span class="sum-val">${totalDone} / ${totalTarget}${bonus ? ` <span class="bonus">+${bonus}</span>` : ''}</span>
+      </div>
+    `;
+    setCaveLight(ratio);
   }
 
+  /* ---------- привычки ---------- */
   function cells(done, target) {
     let html = '<div class="bar">';
     for (let i = 0; i < target; i++) {
@@ -436,35 +443,60 @@
     errorEl.style.display = 'none';
     habitsEl.innerHTML = '';
 
+    renderSummary(habits);
+
     if (!habits.length) {
-      habitsEl.innerHTML = '<div id="status">привычек нет — добавь через /addhabit</div>';
+      habitsEl.innerHTML = '<div id="status">привычек нет — добавь ниже</div>';
       return;
     }
 
     habits.forEach(h => {
+      const bonus = Math.max(0, h.done - h.weekly_target);
       const div = document.createElement('div');
       div.className = 'habit' + (h.logged_today ? ' done' : '') + (h.id === pulseId ? ' pulse' : '');
       div.innerHTML = `
         <div class="habit-top">
           <span class="habit-title">${h.title}</span>
-          <span class="habit-count">${h.done} / ${h.weekly_target}</span>
+          <span class="habit-count">${Math.min(h.done, h.weekly_target)} / ${h.weekly_target}${bonus ? ` <span class="bonus">+${bonus}</span>` : ''}</span>
         </div>
         ${cells(h.done, h.weekly_target)}
-        <button class="act${h.logged_today ? ' undo' : ''}"
-                data-id="${h.id}" data-action="${h.logged_today ? 'unlog' : 'log'}">
-          ${h.logged_today ? '↩ отменить' : '▸ отметить'}
-        </button>
+        <div class="row">
+          <button class="act${h.logged_today ? ' undo' : ''}"
+                  data-id="${h.id}" data-action="${h.logged_today ? 'unlog' : 'log'}">
+            ${h.logged_today ? '↩ отменить' : '▸ отметить'}
+          </button>
+          <button class="del" data-del="${h.id}" title="удалить">✕</button>
+        </div>
+        ${confirmingId === h.id ? `
+          <div class="confirm">
+            <p>удалить «${h.title}»? вся история отметок по ней пропадёт</p>
+            <div class="row">
+              <button class="act danger" data-confirm="${h.id}">удалить</button>
+              <button class="act undo" data-cancel="1">отмена</button>
+            </div>
+          </div>` : ''}
       `;
       habitsEl.appendChild(div);
     });
 
-    habitsEl.querySelectorAll('.act').forEach(btn => {
-      btn.addEventListener('click', () => send(btn.dataset.action, btn.dataset.id));
-    });
+    habitsEl.querySelectorAll('.act[data-action]').forEach(b =>
+      b.addEventListener('click', () => send(b.dataset.action, b.dataset.id)));
 
-    setCaveLight(habits);
+    habitsEl.querySelectorAll('[data-del]').forEach(b =>
+      b.addEventListener('click', () => {
+        confirmingId = confirmingId === b.dataset.del ? null : b.dataset.del;
+        tg.HapticFeedback.impactOccurred('light');
+        reload();
+      }));
+
+    habitsEl.querySelectorAll('[data-confirm]').forEach(b =>
+      b.addEventListener('click', () => removeHabit(b.dataset.confirm)));
+
+    habitsEl.querySelectorAll('[data-cancel]').forEach(b =>
+      b.addEventListener('click', () => { confirmingId = null; reload(); }));
   }
 
+  /* ---------- api ---------- */
   async function apiCall(path, options = {}) {
     const res = await fetch(path, {
       ...options,
@@ -478,12 +510,18 @@
     return res.json();
   }
 
+  let lastHabits = [];
+
+  function reload() { render(lastHabits); }
+
   async function load() {
     try {
-      render((await apiCall('/api/habits')).habits);
+      lastHabits = (await apiCall('/api/habits')).habits;
+      render(lastHabits);
     } catch (e) {
       statusEl.style.display = 'none';
-      showError('не загрузилось: ' + e.message);
+      errorEl.textContent = 'не загрузилось: ' + e.message;
+      errorEl.style.display = 'block';
     }
   }
 
@@ -491,14 +529,79 @@
     tg.HapticFeedback.impactOccurred(action === 'log' ? 'medium' : 'light');
     try {
       const data = await apiCall(`/api/${action}`, {
-        method: 'POST',
-        body: JSON.stringify({ habit_id: habitId }),
+        method: 'POST', body: JSON.stringify({ habit_id: habitId }),
       });
-      render(data.habits, action === 'log' ? habitId : null);
+      lastHabits = data.habits;
+      render(lastHabits, action === 'log' ? habitId : null);
     } catch (e) {
-      showError('не сохранилось: ' + e.message);
+      errorEl.textContent = 'не сохранилось: ' + e.message;
+      errorEl.style.display = 'block';
     }
   }
+
+  async function removeHabit(habitId) {
+    tg.HapticFeedback.notificationOccurred('warning');
+    try {
+      const data = await apiCall('/api/remove', {
+        method: 'POST', body: JSON.stringify({ habit_id: habitId }),
+      });
+      confirmingId = null;
+      lastHabits = data.habits;
+      render(lastHabits);
+    } catch (e) {
+      errorEl.textContent = 'не удалилось: ' + e.message;
+      errorEl.style.display = 'block';
+    }
+  }
+
+  /* ---------- добавление ---------- */
+  const addForm = document.getElementById('add-form');
+  const addOpen = document.getElementById('add-open');
+  const titleInput = document.getElementById('new-title');
+  const pick = document.getElementById('target-pick');
+
+  for (let i = 1; i <= 7; i++) {
+    const b = document.createElement('button');
+    b.textContent = i;
+    if (i === newTarget) b.className = 'sel';
+    b.addEventListener('click', () => {
+      newTarget = i;
+      [...pick.children].forEach((c, idx) => c.className = (idx + 1 === i ? 'sel' : ''));
+    });
+    pick.appendChild(b);
+  }
+
+  addOpen.addEventListener('click', () => {
+    addForm.classList.add('open');
+    addOpen.style.display = 'none';
+    titleInput.focus();
+  });
+
+  document.getElementById('add-cancel').addEventListener('click', () => {
+    addForm.classList.remove('open');
+    addOpen.style.display = 'block';
+    titleInput.value = '';
+  });
+
+  document.getElementById('add-save').addEventListener('click', async () => {
+    const title = titleInput.value.trim();
+    if (!title) { titleInput.focus(); return; }
+    tg.HapticFeedback.impactOccurred('medium');
+    try {
+      const data = await apiCall('/api/add', {
+        method: 'POST',
+        body: JSON.stringify({ title, weekly_target: newTarget }),
+      });
+      lastHabits = data.habits;
+      titleInput.value = '';
+      addForm.classList.remove('open');
+      addOpen.style.display = 'block';
+      render(lastHabits);
+    } catch (e) {
+      errorEl.textContent = 'не создалось: ' + e.message;
+      errorEl.style.display = 'block';
+    }
+  });
 
   load();
 </script>

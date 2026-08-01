@@ -95,6 +95,45 @@ def unlog_habit():
     return jsonify(habits_payload())
 
 
+@app.route("/api/add", methods=["POST"])
+def add_habit_api():
+    err = require_valid_init_data()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    title = (body.get("title") or "").strip()
+    try:
+        target = int(body.get("weekly_target"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "bad target"}), 400
+    if not title or not (1 <= target <= 7):
+        return jsonify({"error": "bad input"}), 400
+
+    import re as _re
+
+    habit_id = _re.sub(r"[^a-zа-яё0-9]+", "_", title.lower()).strip("_") or "habit"
+    existing = {h["id"] for h in storage.get_habits()}
+    base, n = habit_id, 2
+    while habit_id in existing:
+        habit_id = f"{base}_{n}"
+        n += 1
+
+    storage.add_habit(habit_id, title, target)
+    return jsonify(habits_payload())
+
+
+@app.route("/api/remove", methods=["POST"])
+def remove_habit_api():
+    err = require_valid_init_data()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    habit_id = body.get("habit_id")
+    if not habit_id or not storage.remove_habit(habit_id):
+        return jsonify({"error": "unknown habit_id"}), 400
+    return jsonify(habits_payload())
+
+
 @app.route("/healthz")
 def healthz():
     return "ok"
