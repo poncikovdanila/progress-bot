@@ -39,6 +39,19 @@ def is_habit_logged_today(habit_id: str) -> bool:
     return today in state.get("habit_logs", {}).get(habit_id, [])
 
 
+def unlog_habit_today(habit_id: str) -> bool:
+    """Снимает сегодняшнюю отметку. True — если было что снимать."""
+    state = load_state()
+    today = date.today().isoformat()
+    logs = state.get("habit_logs", {}).get(habit_id, [])
+    if today not in logs:
+        return False
+    logs.remove(today)
+    state["habit_logs"][habit_id] = logs
+    save_state(state)
+    return True
+
+
 def week_start():
     today = date.today()
     return today - timedelta(days=today.weekday())  # Monday

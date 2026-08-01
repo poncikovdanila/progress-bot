@@ -82,6 +82,19 @@ def log_habit():
     return jsonify(habits_payload())
 
 
+@app.route("/api/unlog", methods=["POST"])
+def unlog_habit():
+    err = require_valid_init_data()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    habit_id = body.get("habit_id")
+    if not habit_id or not any(h["id"] == habit_id for h in storage.get_habits()):
+        return jsonify({"error": "unknown habit_id"}), 400
+    storage.unlog_habit_today(habit_id)
+    return jsonify(habits_payload())
+
+
 @app.route("/healthz")
 def healthz():
     return "ok"

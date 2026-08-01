@@ -5,7 +5,15 @@ import threading
 import time as time_module
 from datetime import time
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    MenuButtonWebApp,
+    ReplyKeyboardMarkup,
+    Update,
+    WebAppInfo,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -51,11 +59,17 @@ def build_habits_text_and_keyboard():
         done = storage.get_week_count(habit["id"])
         target = habit["weekly_target"]
         bar = progress_bar(done, target)
-        logged_today = "✅" if storage.is_habit_logged_today(habit["id"]) else ""
+        logged = storage.is_habit_logged_today(habit["id"])
+        logged_today = "✅" if logged else ""
         lines.append(f"{habit['title']}: {bar} {done}/{target} {logged_today}")
-        buttons.append(
-            [InlineKeyboardButton(f"Отметить: {habit['title']}", callback_data=f"log_{habit['id']}")]
-        )
+        if logged:
+            buttons.append(
+                [InlineKeyboardButton(f"↩️ Отменить: {habit['title']}", callback_data=f"unlog_{habit['id']}")]
+            )
+        else:
+            buttons.append(
+                [InlineKeyboardButton(f"Отметить: {habit['title']}", callback_data=f"log_{habit['id']}")]
+            )
     return "\n".join(lines), InlineKeyboardMarkup(buttons)
 
 
@@ -71,18 +85,50 @@ def build_tasks_text():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+
+    if WEBAPP_URL:
+        # постоянная кнопка внизу экрана + инлайн-кнопка для открытия прямо сейчас
+        reply_kb = ReplyKeyboardMarkup(
+            [[KeyboardButton("Открыть привычки", web_app=WebAppInfo(url=WEBAPP_URL))]],
+            resize_keyboard=True,
+            is_persistent=True,
+        )
+        inline_kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Открыть привычки", web_app=WebAppInfo(url=WEBAPP_URL))]]
+        )
+        await update.message.reply_text("Привычки:", reply_markup=reply_kb)
+        await update.message.reply_text("Жми:", reply_markup=inline_kb)
+        return
+
     await update.message.reply_text(
         f"Привет! Я твой бот-трекер.\n\n"
         f"Твой chat_id: `{chat_id}`\n"
-        f"Если хочешь получать напоминания по расписанию, добавь его в переменную окружения CHAT_ID.\n\n"
+        f"Mini App пока не настроен — не задана переменная окружения WEBAPP_URL.\n\n"
         f"Команды:\n"
         f"/habits — привычки за неделю\n"
+        f"/tasks — разовые задачи\n"
+        f"/progress — общая сводка\n"
+        f"/addhabit <цель> <название> — добавить привычку\n"
+        f"/sethabit <id> <цель> — поменять недельную цель\n"
+        f"/removehabit <id> — удалить привычку\n"
+        f"/unlog <id> — снять сегодняшнюю отметку\n"
+        f"/help — все команды",
+        parse_mode="Markdown",
+    )
+
+
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        f"Твой chat_id: `{update.effective_chat.id}`\n\n"
+        f"Команды:\n"
+        f"/app — открыть мини-приложение\n"
+        f"/habits — привычки за неделю (текстом)\n"
         f"/tasks — разовые задачи\n"
         f"/progress — общая сводка\n"
         f"/addhabit <цель> <название> — добавить привычку, например `/addhabit 4 Чтение`\n"
         f"/sethabit <id> <цель> — поменять недельную цель\n"
         f"/removehabit <id> — удалить привычку\n"
-        f"/app — открыть привычки в виде мини-приложения",
+        f"/unlog <id> — снять сегодняшнюю отметку",
         parse_mode="Markdown",
     )
 
@@ -179,6 +225,32 @@ async def app_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Жми, чтобы открыть:", reply_markup=keyboard)
 
 
+async def on_unlog_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    habit_id = query.data.replace("unlog_", "")
+    if storage.unlog_habit_today(habit_id):
+        await query.answer("Отметка снята")
+    else:
+        await query.answer("Сегодня и не было отмечено")
+    text, keyboard = build_habits_text_and_keyboard()
+    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+async def unlog_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        ids = ", ".join(h["id"] for h in storage.get_habits())
+        await update.message.reply_text(
+            f"Формат: `/unlog <id>`\nТекущие: {ids}\n\nИли просто нажми кнопку «↩️ Отменить» в /habits.",
+            parse_mode="Markdown",
+        )
+        return
+    habit_id = context.args[0]
+    if storage.unlog_habit_today(habit_id):
+        await update.message.reply_text(f"Снял сегодняшнюю отметку с `{habit_id}`.", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("Сегодня эта привычка не отмечена (или неверный id).")
+
+
 async def morning_digest(context: ContextTypes.DEFAULT_TYPE):
     if not CHAT_ID:
         return
@@ -207,13 +279,23 @@ async def evening_reminder(context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def post_init(application: Application):
+    """Ставит кнопку-меню слева от поля ввода — она открывает Mini App одним тапом."""
+    if WEBAPP_URL:
+        await application.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="Привычки", web_app=WebAppInfo(url=WEBAPP_URL))
+        )
+        logger.info("Кнопка-меню настроена на Mini App")
+
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("Не задана переменная окружения BOT_TOKEN")
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("habits", habits_cmd))
     app.add_handler(CommandHandler("tasks", tasks_cmd))
     app.add_handler(CommandHandler("progress", progress_cmd))
@@ -221,7 +303,9 @@ def main():
     app.add_handler(CommandHandler("removehabit", removehabit_cmd))
     app.add_handler(CommandHandler("sethabit", sethabit_cmd))
     app.add_handler(CommandHandler("app", app_cmd))
+    app.add_handler(CommandHandler("unlog", unlog_cmd))
     app.add_handler(CallbackQueryHandler(on_habit_button, pattern="^log_"))
+    app.add_handler(CallbackQueryHandler(on_unlog_button, pattern="^unlog_"))
 
     app.job_queue.run_daily(
         morning_digest, time=time(MORNING_DIGEST_HOUR, MORNING_DIGEST_MINUTE)
