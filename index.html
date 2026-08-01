@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Привычки</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #111111);
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 16px;
+  }
+  .habit {
+    background: var(--tg-theme-secondary-bg-color, #f2f2f2);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .habit-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .habit-title {
+    font-weight: 600;
+  }
+  .habit-count {
+    font-size: 13px;
+    color: var(--tg-theme-hint-color, #888888);
+  }
+  .bar-track {
+    height: 10px;
+    border-radius: 5px;
+    background: rgba(128,128,128,0.25);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--tg-theme-button-color, #2ea6ff);
+    transition: width 0.2s ease;
+  }
+  button.log-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--tg-theme-button-color, #2ea6ff);
+    color: var(--tg-theme-button-text-color, #ffffff);
+  }
+  button.log-btn:disabled {
+    opacity: 0.5;
+  }
+  #status {
+    text-align: center;
+    color: var(--tg-theme-hint-color, #888888);
+    padding: 24px 0;
+  }
+  #error {
+    color: #e05555;
+    text-align: center;
+    padding: 12px 0;
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <h1>Твои привычки на этой неделе</h1>
+  <div id="status">Загрузка…</div>
+  <div id="error"></div>
+  <div id="habits"></div>
+
+<script>
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+
+  const habitsEl = document.getElementById('habits');
+  const statusEl = document.getElementById('status');
+  const errorEl = document.getElementById('error');
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  function render(habits) {
+    statusEl.style.display = 'none';
+    habitsEl.innerHTML = '';
+    if (!habits.length) {
+      habitsEl.innerHTML = '<div id="status">Привычек пока нет. Добавь через /addhabit в чате с ботом.</div>';
+      return;
+    }
+    habits.forEach(h => {
+      const pct = h.weekly_target ? Math.min(100, Math.round(100 * h.done / h.weekly_target)) : 0;
+      const div = document.createElement('div');
+      div.className = 'habit';
+      div.innerHTML = `
+        <div class="habit-top">
+          <span class="habit-title">${h.title}${h.logged_today ? ' ✅' : ''}</span>
+          <span class="habit-count">${h.done}/${h.weekly_target}</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <button class="log-btn" data-id="${h.id}" ${h.logged_today ? 'disabled' : ''}>
+          ${h.logged_today ? 'Уже отмечено сегодня' : 'Отметить сегодня'}
+        </button>
+      `;
+      habitsEl.appendChild(div);
+    });
+    habitsEl.querySelectorAll('.log-btn').forEach(btn => {
+      btn.addEventListener('click', () => logHabit(btn.dataset.id));
+    });
+  }
+
+  async function apiCall(path, options = {}) {
+    const res = await fetch(path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Init-Data': tg.initData,
+        ...(options.headers || {}),
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Сервер ответил ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async function loadHabits() {
+    try {
+      const data = await apiCall('/api/habits');
+      render(data.habits);
+    } catch (e) {
+      showError('Не удалось загрузить данные: ' + e.message);
+    }
+  }
+
+  async function logHabit(habitId) {
+    tg.HapticFeedback.impactOccurred('light');
+    try {
+      const data = await apiCall('/api/log', {
+        method: 'POST',
+        body: JSON.stringify({ habit_id: habitId }),
+      });
+      render(data.habits);
+    } catch (e) {
+      showError('Не удалось сохранить: ' + e.message);
+    }
+  }
+
+  loadHabits();
+</script>
+</body>
+</html>

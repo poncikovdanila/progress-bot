@@ -1,0 +1,39 @@
+{
+  "habit_logs": {
+    "gym": [
+      "2026-08-01"
+    ],
+    "python": [
+      "2026-08-01"
+    ],
+    "english": [
+      "2026-08-01"
+    ],
+    "ml_roadmap": [
+      "2026-08-01"
+    ]
+  },
+  "completed_tasks": [],
+  "habits": [
+    {
+      "id": "gym",
+      "title": "Зал / бассейн",
+      "weekly_target": 3
+    },
+    {
+      "id": "python",
+      "title": "Python практика",
+      "weekly_target": 5
+    },
+    {
+      "id": "english",
+      "title": "Английский",
+      "weekly_target": 3
+    },
+    {
+      "id": "ml_roadmap",
+      "title": "ML-роадмап / Stepik",
+      "weekly_target": 2
+    }
+  ]
+}
